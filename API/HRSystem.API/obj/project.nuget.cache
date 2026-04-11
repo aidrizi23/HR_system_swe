@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "3vVC6CQAHyHrCecb2M2MHSwZzuUfuoJuowA+9p2zHq+hIJDHQa6Okh0i51bW+LdVkeY1ZD7SQykA90J0uvymhg==",
+  "success": true,
+  "projectFilePath": "/Users/albiidrizi/Desktop/HR_system_project/HR_system_swe/API/HRSystem.API/HRSystem.API.csproj",
+  "expectedPackageFiles": [
+    "/Users/albiidrizi/.nuget/packages/microsoft.aspnetcore.openapi/8.0.25/microsoft.aspnetcore.openapi.8.0.25.nupkg.sha512",
+    "/Users/albiidrizi/.nuget/packages/microsoft.extensions.apidescription.server/6.0.5/microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512",
+    "/Users/albiidrizi/.nuget/packages/microsoft.openapi/1.6.14/microsoft.openapi.1.6.14.nupkg.sha512",
+    "/Users/albiidrizi/.nuget/packages/swashbuckle.aspnetcore/6.6.2/swashbuckle.aspnetcore.6.6.2.nupkg.sha512",
+    "/Users/albiidrizi/.nuget/packages/swashbuckle.aspnetcore.swagger/6.6.2/swashbuckle.aspnetcore.swagger.6.6.2.nupkg.sha512",
+    "/Users/albiidrizi/.nuget/packages/swashbuckle.aspnetcore.swaggergen/6.6.2/swashbuckle.aspnetcore.swaggergen.6.6.2.nupkg.sha512",
+    "/Users/albiidrizi/.nuget/packages/swashbuckle.aspnetcore.swaggerui/6.6.2/swashbuckle.aspnetcore.swaggerui.6.6.2.nupkg.sha512"
+  ],
+  "logs": []
+}
