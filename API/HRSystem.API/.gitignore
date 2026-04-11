@@ -1,0 +1,8 @@
+bin/
+obj/
+appsettings.Development.json
+.vs/
+.idea/
+uploads/
+Logs/
+*.user
