@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using HRSystem.API.Data;
 using HRSystem.API.Services.Auth;
 using HRSystem.API.Services.Department;
+using HRSystem.API.Services.Employee;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
