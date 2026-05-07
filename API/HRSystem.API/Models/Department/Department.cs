@@ -1,4 +1,5 @@
 using HRSystem.API.Models.Common;
+using HRSystem.API.Models.Employee;
 
 namespace HRSystem.API.Models.Department;
 
@@ -18,4 +19,5 @@ public class Department : BaseEntity, ISoftDeletable, ISlugEntity
 
     public Department? ParentDepartment { get; set; }
     public ICollection<Department> SubDepartments { get; set; } = new List<Department>();
+    public ICollection<Team> Teams { get; set; } = new List<Team>();
 }

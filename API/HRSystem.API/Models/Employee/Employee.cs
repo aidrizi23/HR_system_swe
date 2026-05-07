@@ -32,7 +32,9 @@ public class Employee : BaseEntity, ISoftDeletable, ISlugEntity
     public string? DeletedBy { get; set; }
 
     public DepartmentEntity? Department { get; set; }
+    public Team? Team { get; set; }
     public Employee? Manager { get; set; }
     public ICollection<Employee> DirectReports { get; set; } = new List<Employee>();
     public User? User { get; set; }
+    public ICollection<DepartmentTransferHistory> TransferHistory { get; set; } = new List<DepartmentTransferHistory>();
 }
