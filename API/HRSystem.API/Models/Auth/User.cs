@@ -13,6 +13,9 @@ public class User : BaseEntity, ISoftDeletable
     public int FailedLoginAttempts { get; set; }
     public DateTime? LockoutEnd { get; set; }
 
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetExpiresAt { get; set; }
+
     public int? EmployeeId { get; set; }
 
     public bool IsDeleted { get; set; }
