@@ -17,6 +17,7 @@ builder.Services.AddDbContext<AppDbContext>((sp, options) =>
            .AddInterceptors(sp.GetRequiredService<AuditInterceptor>());
 });
 
+builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
