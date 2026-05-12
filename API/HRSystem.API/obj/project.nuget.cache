@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "D1xNyZqdzho=",
+  "dgSpecHash": "ABTOVsQugUBA1K9pWpzY4awnIa1pIbTfO0byaSBf0re9ca/+t0luWAbwZ3wqFDOnY/G9onqopKO3K2zkoEO7+w==",
   "success": true,
   "projectFilePath": "/Users/albiidrizi/Desktop/HR_system_project/HR_system_swe/API/HRSystem.API/HRSystem.API.csproj",
   "expectedPackageFiles": [
@@ -57,10 +57,7 @@
     "/Users/albiidrizi/.nuget/packages/system.reflection.metadata/6.0.1/system.reflection.metadata.6.0.1.nupkg.sha512",
     "/Users/albiidrizi/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
     "/Users/albiidrizi/.nuget/packages/system.text.encoding.codepages/6.0.0/system.text.encoding.codepages.6.0.0.nupkg.sha512",
-    "/Users/albiidrizi/.nuget/packages/system.threading.channels/6.0.0/system.threading.channels.6.0.0.nupkg.sha512",
-    "/Users/albiidrizi/.nuget/packages/microsoft.netcore.app.ref/8.0.26/microsoft.netcore.app.ref.8.0.26.nupkg.sha512",
-    "/Users/albiidrizi/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.26/microsoft.aspnetcore.app.ref.8.0.26.nupkg.sha512",
-    "/Users/albiidrizi/.nuget/packages/microsoft.netcore.app.host.osx-arm64/8.0.26/microsoft.netcore.app.host.osx-arm64.8.0.26.nupkg.sha512"
+    "/Users/albiidrizi/.nuget/packages/system.threading.channels/6.0.0/system.threading.channels.6.0.0.nupkg.sha512"
   ],
   "logs": []
 }
