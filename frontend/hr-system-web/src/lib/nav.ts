@@ -1,6 +1,7 @@
 import {
   Building2,
   CalendarDays,
+  ClipboardList,
   Clock,
   DollarSign,
   FileText,
@@ -103,6 +104,15 @@ export const NAV_ITEMS: NavItem[] = [
     eyebrow: "OPERATIONS",
     title: "Salary",
     subtitle: "Access payroll-related information and compensation records.",
+  },
+  {
+    label: "Tasks",
+    href: "/tasks",
+    icon: ClipboardList,
+    group: "OPERATIONS",
+    eyebrow: "OPERATIONS",
+    title: "Tasks",
+    subtitle: "Track work assigned across your teams.",
   },
   {
     label: "Documents",
