@@ -26,6 +26,9 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<HRSystem.API.Services.Holidays.IHolidayService, HRSystem.API.Services.Holidays.HolidayService>();
+builder.Services.AddScoped<HRSystem.API.Services.Notifications.IEmailSender, HRSystem.API.Services.Notifications.LoggerEmailSender>();
+builder.Services.AddScoped<HRSystem.API.Services.Notifications.INotificationService, HRSystem.API.Services.Notifications.NotificationService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
