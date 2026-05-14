@@ -6,21 +6,17 @@ export interface DirectoryUser {
   email: string;
 }
 
-interface EmployeeDirectoryDto {
+// Subset of the backend EmployeeDto we actually consume for the directory picker.
+interface EmployeeRow {
   id: number;
-  publicId: string;
   firstName: string;
   lastName: string;
   email: string;
-  jobTitle?: string;
-  departmentName?: string;
-  profilePhotoUrl?: string;
-  slug: string;
 }
 
 export const apiUsers = {
   list: async (): Promise<DirectoryUser[]> => {
-    const { data } = await api.get<EmployeeDirectoryDto[]>("/employees/directory");
+    const { data } = await api.get<EmployeeRow[]>("/employees");
     return data.map((d) => ({
       id: d.id,
       name: `${d.firstName} ${d.lastName}`,
