@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bell,
   Calendar,
   ChevronDown,
   LogOut,
@@ -13,6 +12,7 @@ import {
   Sun,
   UserRound,
 } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -102,14 +102,7 @@ export function Topbar() {
           <Moon className="hidden h-4 w-4 dark:block" strokeWidth={1.8} />
         </button>
 
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative grid h-[38px] w-[38px] place-items-center rounded-full border border-border bg-card text-[#1f2a3a] transition-colors hover:bg-secondary"
-        >
-          <Bell className="h-4 w-4" strokeWidth={1.8} />
-          <span className="absolute right-[10px] top-[9px] h-[7px] w-[7px] rounded-full border-[2px] border-card bg-[#e44b4b]" />
-        </button>
+        <NotificationBell />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
