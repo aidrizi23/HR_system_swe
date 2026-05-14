@@ -26,6 +26,10 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<HRSystem.API.Services.Common.IApprovalScopeService, HRSystem.API.Services.Common.ApprovalScopeService>();
+builder.Services.AddScoped<HRSystem.API.Services.Leave.ILeaveService, HRSystem.API.Services.Leave.LeaveService>();
+builder.Services.AddScoped<HRSystem.API.Services.TimeTracking.ITimeTrackingService, HRSystem.API.Services.TimeTracking.TimeTrackingService>();
+builder.Services.AddScoped<HRSystem.API.Services.Overtime.IOvertimeService, HRSystem.API.Services.Overtime.OvertimeService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
