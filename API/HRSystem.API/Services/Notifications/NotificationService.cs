@@ -150,28 +150,43 @@ public class NotificationService : INotificationService
 
     public async Task UpdatePreferencesAsync(int userId, List<EmailPreferenceDto> prefs)
     {
-        var existing = await _context.EmailPreferences
-            .Where(p => p.UserId == userId)
-            .ToDictionaryAsync(p => p.NotificationType);
-
-        foreach (var p in prefs)
+        for (int attempt = 0; attempt < 2; attempt++)
         {
-            if (!Enum.TryParse<NotificationType>(p.NotificationType, out var type)) continue;
-            if (existing.TryGetValue(type, out var row))
+            var existing = await _context.EmailPreferences
+                .Where(p => p.UserId == userId)
+                .ToDictionaryAsync(p => p.NotificationType);
+
+            foreach (var p in prefs)
             {
-                row.IsEmailEnabled = p.IsEmailEnabled;
-            }
-            else
-            {
-                _context.EmailPreferences.Add(new EmailPreference
+                if (!Enum.TryParse<NotificationType>(p.NotificationType, out var type)) continue;
+                if (existing.TryGetValue(type, out var row))
                 {
-                    UserId = userId,
-                    NotificationType = type,
-                    IsEmailEnabled = p.IsEmailEnabled,
-                });
+                    row.IsEmailEnabled = p.IsEmailEnabled;
+                }
+                else
+                {
+                    _context.EmailPreferences.Add(new EmailPreference
+                    {
+                        UserId = userId,
+                        NotificationType = type,
+                        IsEmailEnabled = p.IsEmailEnabled,
+                    });
+                }
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return;
+            }
+            catch (DbUpdateException) when (attempt == 0)
+            {
+                // Concurrent insert by another request won the race on the (UserId, NotificationType)
+                // unique index. Detach pending entries, re-read, and merge.
+                foreach (var entry in _context.ChangeTracker.Entries<EmailPreference>().ToList())
+                    entry.State = EntityState.Detached;
             }
         }
-        await _context.SaveChangesAsync();
     }
 
     private static NotificationDto Map(NotificationEntity n) => new()

@@ -17,7 +17,7 @@ public class HolidayService : IHolidayService
     public async Task<List<HolidayDto>> GetForYearAsync(int year)
     {
         var from = new DateTime(year, 1, 1);
-        var to = new DateTime(year, 12, 31);
+        var to = new DateTime(year, 12, 31, 23, 59, 59);
         return await GetExpandedAsync(from, to);
     }
 

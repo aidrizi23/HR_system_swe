@@ -20,6 +20,7 @@ public class HolidaysController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "year" })]
     public async Task<ActionResult<List<HolidayDto>>> GetForYear([FromQuery] int? year)
     {
         var y = year ?? DateTime.UtcNow.Year;
@@ -28,6 +29,7 @@ public class HolidaysController : ControllerBase
 
     [HttpGet("upcoming")]
     [AllowAnonymous]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "daysAhead" })]
     public async Task<ActionResult<List<HolidayDto>>> GetUpcoming([FromQuery] int daysAhead = 90)
     {
         return Ok(await _service.GetUpcomingAsync(daysAhead));
@@ -35,6 +37,7 @@ public class HolidaysController : ControllerBase
 
     [HttpGet("{id}")]
     [AllowAnonymous]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     public async Task<ActionResult<HolidayDto>> GetById(int id)
     {
         var h = await _service.GetByIdAsync(id);
