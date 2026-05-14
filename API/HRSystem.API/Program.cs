@@ -30,6 +30,9 @@ builder.Services.AddScoped<HRSystem.API.Services.Common.IApprovalScopeService, H
 builder.Services.AddScoped<HRSystem.API.Services.Leave.ILeaveService, HRSystem.API.Services.Leave.LeaveService>();
 builder.Services.AddScoped<HRSystem.API.Services.TimeTracking.ITimeTrackingService, HRSystem.API.Services.TimeTracking.TimeTrackingService>();
 builder.Services.AddScoped<HRSystem.API.Services.Overtime.IOvertimeService, HRSystem.API.Services.Overtime.OvertimeService>();
+builder.Services.AddScoped<HRSystem.API.Services.Holidays.IHolidayService, HRSystem.API.Services.Holidays.HolidayService>();
+builder.Services.AddScoped<HRSystem.API.Services.Notifications.IEmailSender, HRSystem.API.Services.Notifications.LoggerEmailSender>();
+builder.Services.AddScoped<HRSystem.API.Services.Notifications.INotificationService, HRSystem.API.Services.Notifications.NotificationService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
@@ -60,6 +63,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddResponseCaching();
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? Array.Empty<string>();
@@ -100,6 +104,7 @@ else
 }
 
 app.UseCors("AllowFrontend");
+app.UseResponseCaching();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

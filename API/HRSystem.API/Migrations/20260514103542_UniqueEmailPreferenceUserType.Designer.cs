@@ -3,6 +3,7 @@ using System;
 using HRSystem.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,13 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HRSystem.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514103542_UniqueEmailPreferenceUserType")]
+    partial class UniqueEmailPreferenceUserType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.27")
+                .HasAnnotation("ProductVersion", "8.0.26")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1549,11 +1552,6 @@ namespace HRSystem.API.Migrations
                     b.HasIndex("PublicId")
                         .IsUnique();
 
-                    b.HasIndex("EmployeeId", "Date")
-                        .IsUnique()
-                        .HasDatabaseName("IX_OvertimeRecords_AutoDetected_Active")
-                        .HasFilter("\"Type\" = 1 AND (\"Status\" = 0 OR \"Status\" = 3)");
-
                     b.ToTable("OvertimeRecords");
                 });
 
@@ -2267,11 +2265,6 @@ namespace HRSystem.API.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_TimeLogs_OpenSession_EmployeeId")
-                        .HasFilter("\"EndTime\" IS NULL");
 
                     b.HasIndex("PublicId")
                         .IsUnique();

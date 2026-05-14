@@ -381,6 +381,10 @@ public class AppDbContext : DbContext
             .HasForeignKey(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<EmailPreference>()
+            .HasIndex(p => new { p.UserId, p.NotificationType })
+            .IsUnique();
+
         modelBuilder.Entity<Floor>()
             .HasOne(f => f.Office)
             .WithMany(o => o.Floors)
