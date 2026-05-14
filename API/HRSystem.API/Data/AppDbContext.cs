@@ -490,5 +490,21 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Payslip>()
             .Property(p => p.NetPay)
             .HasPrecision(18, 2);
+
+        // One open clock-in session per employee at a time. Backed by a partial unique index
+        // so that two concurrent ClockIn requests can't both succeed via check-then-insert.
+        modelBuilder.Entity<TimeLog>()
+            .HasIndex(t => t.EmployeeId)
+            .IsUnique()
+            .HasFilter("\"EndTime\" IS NULL")
+            .HasDatabaseName("IX_TimeLogs_OpenSession_EmployeeId");
+
+        // One non-terminal AutoDetected overtime record per (Employee, Date). Prevents
+        // duplicate Pending/Recommended rows from concurrent ClockOuts on the same shift.
+        modelBuilder.Entity<OvertimeRecord>()
+            .HasIndex(r => new { r.EmployeeId, r.Date })
+            .IsUnique()
+            .HasFilter("\"Type\" = 1 AND (\"Status\" = 0 OR \"Status\" = 3)")
+            .HasDatabaseName("IX_OvertimeRecords_AutoDetected_Active");
     }
 }

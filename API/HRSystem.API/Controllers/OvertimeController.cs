@@ -36,7 +36,11 @@ public class OvertimeController : ControllerBase
             .Select(u => u.EmployeeId)
             .FirstOrDefaultAsync()
             ?? throw new InvalidOperationException("Current user has no employee link");
-        return Ok(await _service.SubmitManualAsync(employeeId, dto));
+        try
+        {
+            return Ok(await _service.SubmitManualAsync(employeeId, dto));
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpGet("mine")]

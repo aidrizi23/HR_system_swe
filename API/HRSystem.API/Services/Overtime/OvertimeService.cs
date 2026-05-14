@@ -42,31 +42,45 @@ public class OvertimeService : IOvertimeService
         var overtimeMinutes = totalMinutesToday - standardMinutes;
 
         // Idempotency: if an AutoDetected record already exists for this date in a non-terminal
-        // state, update it; otherwise create a new one.
-        var existing = await _context.Set<OvertimeRecord>()
-            .FirstOrDefaultAsync(r => r.EmployeeId == employeeId
-                                   && r.Date == date.Date
-                                   && r.Type == OvertimeType.AutoDetected
-                                   && (r.Status == OvertimeStatus.Pending
-                                    || r.Status == OvertimeStatus.Recommended));
-        if (existing != null)
+        // state, update it; otherwise create a new one. The partial unique index
+        // IX_OvertimeRecords_AutoDetected_Active is the source of truth — if a concurrent
+        // ClockOut inserts under us, we retry once by re-reading the existing row.
+        for (int attempt = 0; attempt < 2; attempt++)
         {
-            existing.OvertimeMinutes = overtimeMinutes;
-            existing.DetectedFromTimeLogId = sourceTimeLogId;
-        }
-        else
-        {
-            _context.Set<OvertimeRecord>().Add(new OvertimeRecord
+            var existing = await _context.Set<OvertimeRecord>()
+                .FirstOrDefaultAsync(r => r.EmployeeId == employeeId
+                                       && r.Date == date.Date
+                                       && r.Type == OvertimeType.AutoDetected
+                                       && (r.Status == OvertimeStatus.Pending
+                                        || r.Status == OvertimeStatus.Recommended));
+            if (existing != null)
             {
-                EmployeeId = employeeId,
-                Date = date.Date,
-                OvertimeMinutes = overtimeMinutes,
-                Type = OvertimeType.AutoDetected,
-                Status = OvertimeStatus.Pending,
-                DetectedFromTimeLogId = sourceTimeLogId,
-            });
+                existing.OvertimeMinutes = overtimeMinutes;
+                existing.DetectedFromTimeLogId = sourceTimeLogId;
+            }
+            else
+            {
+                _context.Set<OvertimeRecord>().Add(new OvertimeRecord
+                {
+                    EmployeeId = employeeId,
+                    Date = date.Date,
+                    OvertimeMinutes = overtimeMinutes,
+                    Type = OvertimeType.AutoDetected,
+                    Status = OvertimeStatus.Pending,
+                    DetectedFromTimeLogId = sourceTimeLogId,
+                });
+            }
+            try
+            {
+                await _context.SaveChangesAsync();
+                return;
+            }
+            catch (DbUpdateException) when (attempt == 0)
+            {
+                foreach (var entry in _context.ChangeTracker.Entries<OvertimeRecord>().ToList())
+                    entry.State = EntityState.Detached;
+            }
         }
-        await _context.SaveChangesAsync();
     }
 
     public async Task<List<OvertimeRecordDto>> GetMineAsync(int employeeId)
@@ -185,7 +199,11 @@ public class OvertimeService : IOvertimeService
 
     private async Task<List<OvertimeRecordDto>> MapListAsync(List<OvertimeRecord> rows)
     {
-        var names = await _context.Employees.ToDictionaryAsync(e => e.Id, e => e.FirstName + " " + e.LastName);
+        if (rows.Count == 0) return new List<OvertimeRecordDto>();
+        var ids = rows.Select(r => r.EmployeeId).Distinct().ToList();
+        var names = await _context.Employees
+            .Where(e => ids.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => e.FirstName + " " + e.LastName);
         return rows.Select(r => new OvertimeRecordDto
         {
             Id = r.Id,

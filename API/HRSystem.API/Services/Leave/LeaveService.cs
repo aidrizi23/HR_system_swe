@@ -151,6 +151,11 @@ public class LeaveService : ILeaveService
     {
         if (dto.EndDate < dto.StartDate)
             throw new InvalidOperationException("EndDate must be on or after StartDate");
+        // Cross-year leave would deduct from only one year's balance and leave the other
+        // year's balance untouched. Until we split per-year segments at submit time, refuse it.
+        if (dto.StartDate.Year != dto.EndDate.Year)
+            throw new InvalidOperationException(
+                "Leave requests spanning multiple calendar years are not supported — please file separate requests for each year");
 
         var type = await _context.LeaveTypes.FindAsync(dto.LeaveTypeId);
         if (type == null || !type.IsActive)

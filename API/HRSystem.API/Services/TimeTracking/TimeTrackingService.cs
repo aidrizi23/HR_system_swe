@@ -39,7 +39,16 @@ public class TimeTrackingService : ITimeTrackingService
             DurationMinutes = 0,
         };
         _context.TimeLogs.Add(log);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // A concurrent ClockIn won the partial unique index race
+            // (IX_TimeLogs_OpenSession_EmployeeId).
+            throw new InvalidOperationException("There is already an open session — clock out first");
+        }
         return Map(log);
     }
 
@@ -197,7 +206,7 @@ public class TimeTrackingService : ITimeTrackingService
             .Where(r => r.EmployeeId == employeeId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
-        var names = await _context.Employees.ToDictionaryAsync(e => e.Id, e => e.FirstName + " " + e.LastName);
+        var names = await BuildNameMapAsync(rows.Select(r => r.EmployeeId));
         return rows.Select(r => MapMod(r, names.GetValueOrDefault(r.EmployeeId))).ToList();
     }
 
@@ -208,8 +217,17 @@ public class TimeTrackingService : ITimeTrackingService
             .Where(r => scope.Contains(r.EmployeeId) && r.Status == ModificationRequestStatus.Pending)
             .OrderBy(r => r.CreatedAt)
             .ToListAsync();
-        var names = await _context.Employees.ToDictionaryAsync(e => e.Id, e => e.FirstName + " " + e.LastName);
+        var names = await BuildNameMapAsync(rows.Select(r => r.EmployeeId));
         return rows.Select(r => MapMod(r, names.GetValueOrDefault(r.EmployeeId))).ToList();
+    }
+
+    private async Task<Dictionary<int, string>> BuildNameMapAsync(IEnumerable<int> employeeIds)
+    {
+        var ids = employeeIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, string>();
+        return await _context.Employees
+            .Where(e => ids.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => e.FirstName + " " + e.LastName);
     }
 
     public async Task<ModificationRequestDto?> ApproveModificationAsync(int requestId, int approverEmployeeId)
