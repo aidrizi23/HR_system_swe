@@ -39,7 +39,7 @@ public class HolidayService : IHolidayService
         var h = new HolidayEntity
         {
             Name = dto.Name,
-            Date = dto.Date,
+            Date = NormalizeToUtcDate(dto.Date),
             IsRecurring = dto.IsRecurring,
             Description = dto.Description,
             Slug = Slugify(dto.Name),
@@ -54,7 +54,7 @@ public class HolidayService : IHolidayService
         var h = await _context.Holidays.FindAsync(id);
         if (h == null) return null;
         h.Name = dto.Name;
-        h.Date = dto.Date;
+        h.Date = NormalizeToUtcDate(dto.Date);
         h.IsRecurring = dto.IsRecurring;
         h.Description = dto.Description;
         h.Slug = Slugify(dto.Name);
@@ -97,6 +97,15 @@ public class HolidayService : IHolidayService
         }
 
         return result.OrderBy(h => h.Date).ToList();
+    }
+
+    // A holiday is a calendar date, not an instant. Strip time-of-day and stamp Kind=Utc so
+    // Npgsql accepts it for 'timestamp with time zone'. Without this, plain "2026-01-01" payloads
+    // crash with ArgumentException at SaveChanges.
+    private static DateTime NormalizeToUtcDate(DateTime input)
+    {
+        var date = input.Date;
+        return DateTime.SpecifyKind(date, DateTimeKind.Utc);
     }
 
     private static string Slugify(string s)

@@ -150,18 +150,37 @@ public class NotificationService : INotificationService
 
     public async Task UpdatePreferencesAsync(int userId, List<EmailPreferenceDto> prefs)
     {
+        // Validate all incoming type names up front. Previously unknown names were silently
+        // skipped and the call returned 200 — callers couldn't distinguish "saved" from "ignored".
+        var parsed = new List<(NotificationType Type, bool IsEnabled)>(prefs.Count);
+        var unknown = new List<string>();
+        foreach (var p in prefs)
+        {
+            if (Enum.TryParse<NotificationType>(p.NotificationType, ignoreCase: false, out var type)
+                && Enum.IsDefined(typeof(NotificationType), type))
+            {
+                parsed.Add((type, p.IsEmailEnabled));
+            }
+            else
+            {
+                unknown.Add(p.NotificationType);
+            }
+        }
+        if (unknown.Count > 0)
+            throw new ArgumentException(
+                $"Unknown notification type(s): {string.Join(", ", unknown)}");
+
         for (int attempt = 0; attempt < 2; attempt++)
         {
             var existing = await _context.EmailPreferences
                 .Where(p => p.UserId == userId)
                 .ToDictionaryAsync(p => p.NotificationType);
 
-            foreach (var p in prefs)
+            foreach (var (type, isEnabled) in parsed)
             {
-                if (!Enum.TryParse<NotificationType>(p.NotificationType, out var type)) continue;
                 if (existing.TryGetValue(type, out var row))
                 {
-                    row.IsEmailEnabled = p.IsEmailEnabled;
+                    row.IsEmailEnabled = isEnabled;
                 }
                 else
                 {
@@ -169,7 +188,7 @@ public class NotificationService : INotificationService
                     {
                         UserId = userId,
                         NotificationType = type,
-                        IsEmailEnabled = p.IsEmailEnabled,
+                        IsEmailEnabled = isEnabled,
                     });
                 }
             }

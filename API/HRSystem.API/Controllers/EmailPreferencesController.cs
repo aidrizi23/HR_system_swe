@@ -33,7 +33,14 @@ public class EmailPreferencesController : ControllerBase
     {
         var userId = _currentUser.UserId
             ?? throw new InvalidOperationException("Not authenticated");
-        await _service.UpdatePreferencesAsync(userId, prefs);
-        return Ok(new { message = "Preferences updated" });
+        try
+        {
+            await _service.UpdatePreferencesAsync(userId, prefs);
+            return Ok(new { message = "Preferences updated" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }
