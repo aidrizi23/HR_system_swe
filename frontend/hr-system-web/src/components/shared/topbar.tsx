@@ -21,7 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { clearStoredAuth } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { type AuthUser, clearStoredAuth, getStoredUser, humanizeRole, initialsFromName } from "@/lib/auth";
 import { findNavByPath } from "@/lib/nav";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -35,12 +36,23 @@ export function Topbar() {
   const router = useRouter();
   const nav = findNavByPath(pathname);
   const { resolvedTheme, setTheme } = useTheme();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    // localStorage is unavailable during SSR; read it after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUser(getStoredUser());
+  }, []);
 
   const today = dateFormatter.format(new Date());
 
   const eyebrow = nav?.eyebrow ?? "OVERVIEW";
   const title = nav?.title ?? "HR System";
   const subtitle = nav?.subtitle ?? "";
+
+  const displayName = user?.name?.trim() || user?.email || "—";
+  const displayRole = humanizeRole(user?.role);
+  const initials = initialsFromName(user?.name, user?.email);
 
   const handleSignOut = () => {
     clearStoredAuth();
@@ -84,13 +96,15 @@ export function Topbar() {
           {today}
         </span>
 
-        <span className="hidden h-[38px] items-center gap-2 rounded-full border border-border bg-card px-3.5 text-[13px] font-semibold text-[#1f2a3a] sm:inline-flex">
-          <ShieldCheck
-            className="h-4 w-4 text-muted-foreground"
-            strokeWidth={1.8}
-          />
-          Super Admin
-        </span>
+        {displayRole && (
+          <span className="hidden h-[38px] items-center gap-2 rounded-full border border-border bg-card px-3.5 text-[13px] font-semibold text-[#1f2a3a] sm:inline-flex">
+            <ShieldCheck
+              className="h-4 w-4 text-muted-foreground"
+              strokeWidth={1.8}
+            />
+            {displayRole}
+          </span>
+        )}
 
         <button
           type="button"
@@ -111,14 +125,14 @@ export function Topbar() {
               className="inline-flex h-[46px] items-center gap-2.5 rounded-full border border-border bg-card py-1 pl-1.5 pr-3.5 transition-colors hover:bg-secondary"
             >
               <span className="grid h-[34px] w-[34px] place-items-center rounded-full bg-[#0b1220] text-[13.5px] font-bold text-white">
-                A
+                {initials || "?"}
               </span>
               <span className="hidden flex-col leading-[1.15] md:flex">
                 <strong className="text-[12.5px] font-bold text-foreground">
-                  admin@hrsystem.com
+                  {displayName}
                 </strong>
                 <span className="text-[11.5px] text-muted-foreground">
-                  Super Admin
+                  {displayRole || "—"}
                 </span>
               </span>
               <ChevronDown
