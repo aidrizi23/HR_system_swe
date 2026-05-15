@@ -17,7 +17,7 @@ namespace HRSystem.API.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.26")
+                .HasAnnotation("ProductVersion", "8.0.27")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -246,6 +246,12 @@ namespace HRSystem.API.Migrations
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PasswordResetExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordResetToken")
                         .HasColumnType("text");
 
                     b.Property<Guid>("PublicId")
@@ -1200,7 +1206,8 @@ namespace HRSystem.API.Migrations
                     b.HasIndex("PublicId")
                         .IsUnique();
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "NotificationType")
+                        .IsUnique();
 
                     b.ToTable("EmailPreferences");
                 });
@@ -1541,6 +1548,11 @@ namespace HRSystem.API.Migrations
 
                     b.HasIndex("PublicId")
                         .IsUnique();
+
+                    b.HasIndex("EmployeeId", "Date")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OvertimeRecords_AutoDetected_Active")
+                        .HasFilter("\"Type\" = 1 AND (\"Status\" = 0 OR \"Status\" = 3)");
 
                     b.ToTable("OvertimeRecords");
                 });
@@ -2255,6 +2267,11 @@ namespace HRSystem.API.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_TimeLogs_OpenSession_EmployeeId")
+                        .HasFilter("\"EndTime\" IS NULL");
 
                     b.HasIndex("PublicId")
                         .IsUnique();
