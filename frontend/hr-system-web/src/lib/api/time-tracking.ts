@@ -7,8 +7,20 @@ import type {
   WeeklySummaryDto,
 } from "@/types";
 
+export interface CreateManualTimeLogDto {
+  date: string;     // YYYY-MM-DD
+  hours: number;
+  notes?: string;
+}
+
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Use LOCAL date components, not toISOString — the latter converts to UTC and shifts
+  // the date backwards for timezones with positive UTC offset (e.g. UTC+2 turns Monday
+  // 00:00 local into Sunday 22:00 UTC, breaking the weekly summary).
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function mondayOf(d: Date): Date {
@@ -54,6 +66,11 @@ export const apiTimeTracking = {
     return data;
   },
 
+  manualEntry: async (dto: CreateManualTimeLogDto): Promise<TimeLogDto> => {
+    const { data } = await api.post<TimeLogDto>("/time-tracking/manual", dto);
+    return data;
+  },
+
   dailySummary: async (date: string): Promise<DailySummaryDto> => {
     const { data } = await api.get<DailySummaryDto>("/time-tracking/summary/daily/mine", {
       params: { date },
@@ -76,6 +93,21 @@ export const apiTimeTracking = {
 
   createModification: async (dto: CreateModificationRequestDto): Promise<ModificationRequestDto> => {
     const { data } = await api.post<ModificationRequestDto>("/time-tracking/modifications", dto);
+    return data;
+  },
+
+  listPendingModifications: async (): Promise<ModificationRequestDto[]> => {
+    const { data } = await api.get<ModificationRequestDto[]>("/time-tracking/modifications/pending");
+    return data;
+  },
+
+  approveModification: async (id: number): Promise<ModificationRequestDto> => {
+    const { data } = await api.post<ModificationRequestDto>(`/time-tracking/modifications/${id}/approve`);
+    return data;
+  },
+
+  rejectModification: async (id: number, reason: string): Promise<ModificationRequestDto> => {
+    const { data } = await api.post<ModificationRequestDto>(`/time-tracking/modifications/${id}/reject`, { reason });
     return data;
   },
 };

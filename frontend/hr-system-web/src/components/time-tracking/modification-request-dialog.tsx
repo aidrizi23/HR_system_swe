@@ -18,32 +18,55 @@ export function ModificationRequestDialog({ log, onClose, onSubmitted }: Props) 
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!log) return;
-    Promise.resolve({ start: log.startTime, end: log.endTime ?? "", reason: "" }).then(
-      ({ start: s, end: e, reason: r }) => {
-        setStart(s);
-        setEnd(e);
-        setReason(r);
-      }
-    );
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStart(log.startTime);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEnd(log.endTime ?? "");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReason("");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(null);
   }, [log]);
 
   if (!log) return null;
 
   async function submit() {
     if (!log) return;
+    setError(null);
+    if (!start || !end) {
+      setError("Start and end times are required.");
+      return;
+    }
     setSubmitting(true);
-    await apiTimeTracking.createModification({
-      timeLogId: log.id,
-      requestedStartTime: start,
-      requestedEndTime: end,
-      reason: reason || undefined,
-    });
-    setSubmitting(false);
-    onSubmitted();
-    onClose();
+    try {
+      await apiTimeTracking.createModification({
+        timeLogId: log.id,
+        requestedStartTime: start,
+        requestedEndTime: end,
+        reason: reason || undefined,
+      });
+      onSubmitted();
+      onClose();
+    } catch (e: unknown) {
+      // Surface the API's error message so the user knows why it failed
+      // (e.g. 401 "Cannot request modification for another employee's log").
+      let msg = "Could not submit the modification.";
+      if (typeof e === "object" && e !== null && "response" in e) {
+        const resp = (e as { response?: { status?: number; data?: { message?: string } } }).response;
+        if (resp?.status === 401 || resp?.status === 403) {
+          msg = "You can only request modifications for your own time logs.";
+        } else if (resp?.data?.message) {
+          msg = resp.data.message;
+        }
+      }
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -71,9 +94,12 @@ export function ModificationRequestDialog({ log, onClose, onSubmitted }: Props) 
             className="w-full rounded-lg border border-border bg-background p-2 text-sm"
           />
         </div>
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-          <Button type="button" size="sm" onClick={submit} disabled={submitting}>Submit</Button>
+          <Button type="button" size="sm" onClick={submit} disabled={submitting}>
+            {submitting ? "Submitting…" : "Submit"}
+          </Button>
         </div>
       </div>
     </>

@@ -7,6 +7,8 @@ interface Props {
   logs: TimeLogDto[];
   users: DirectoryUser[];
   emptyMessage?: string;
+  // Current user's employeeId — "Request edit" only renders on their own rows.
+  currentEmployeeId?: number | null;
   onRequestModification?: (log: TimeLogDto) => void;
 }
 
@@ -21,7 +23,8 @@ function fmtDuration(min: number): string {
   return `${h}h ${m}m`;
 }
 
-export function TimeLogsTable({ logs, users, emptyMessage = "No team time logs found for this date", onRequestModification }: Props) {
+export function TimeLogsTable({ logs, users, emptyMessage = "No team time logs found for this date", currentEmployeeId, onRequestModification }: Props) {
+  const showActionsCol = !!onRequestModification && logs.some((l) => l.employeeId === currentEmployeeId);
   if (logs.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
@@ -39,12 +42,13 @@ export function TimeLogsTable({ logs, users, emptyMessage = "No team time logs f
             <th className="px-4 py-3 text-left">Start</th>
             <th className="px-4 py-3 text-left">End</th>
             <th className="px-4 py-3 text-left">Duration</th>
-            {onRequestModification && <th className="px-4 py-3 text-right">Actions</th>}
+            {showActionsCol && <th className="px-4 py-3 text-right">Actions</th>}
           </tr>
         </thead>
         <tbody>
           {logs.map((l) => {
             const emp = users.find((u) => u.id === l.employeeId);
+            const canRequestEdit = !!onRequestModification && l.employeeId === currentEmployeeId;
             return (
               <tr key={l.id} className="border-t border-border hover:bg-muted/30">
                 <td className="px-4 py-3 font-medium">{emp?.name ?? `#${l.employeeId}`}</td>
@@ -52,15 +56,19 @@ export function TimeLogsTable({ logs, users, emptyMessage = "No team time logs f
                 <td className="px-4 py-3">{l.startTime}</td>
                 <td className="px-4 py-3">{l.endTime ?? "(open)"}</td>
                 <td className="px-4 py-3">{fmtDuration(l.durationMinutes)}</td>
-                {onRequestModification && (
+                {showActionsCol && (
                   <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:underline"
-                      onClick={() => onRequestModification(l)}
-                    >
-                      Request edit
-                    </button>
+                    {canRequestEdit ? (
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() => onRequestModification!(l)}
+                      >
+                        Request edit
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
                 )}
               </tr>
