@@ -1,9 +1,12 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using HRSystem.API.Data;
 using HRSystem.API.Services.Auth;
+using HRSystem.API.Services.Common;
 using HRSystem.API.Services.Department;
 using HRSystem.API.Services.Employee;
 
@@ -17,9 +20,19 @@ builder.Services.AddDbContext<AppDbContext>((sp, options) =>
            .AddInterceptors(sp.GetRequiredService<AuditInterceptor>());
 });
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<HRSystem.API.Services.Common.IApprovalScopeService, HRSystem.API.Services.Common.ApprovalScopeService>();
+builder.Services.AddScoped<HRSystem.API.Services.Leave.ILeaveService, HRSystem.API.Services.Leave.LeaveService>();
+builder.Services.AddScoped<HRSystem.API.Services.TimeTracking.ITimeTrackingService, HRSystem.API.Services.TimeTracking.TimeTrackingService>();
+builder.Services.AddScoped<HRSystem.API.Services.Overtime.IOvertimeService, HRSystem.API.Services.Overtime.OvertimeService>();
+builder.Services.AddScoped<HRSystem.API.Services.Holidays.IHolidayService, HRSystem.API.Services.Holidays.HolidayService>();
+builder.Services.AddScoped<HRSystem.API.Services.Notifications.IEmailSender, HRSystem.API.Services.Notifications.LoggerEmailSender>();
+builder.Services.AddScoped<HRSystem.API.Services.Notifications.INotificationService, HRSystem.API.Services.Notifications.NotificationService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
@@ -50,17 +63,31 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddResponseCaching();
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:3001")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("auth", limiter =>
+    {
+        limiter.PermitLimit = 5;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
     });
 });
 
@@ -76,8 +103,9 @@ else
     app.UseHttpsRedirection();
 }
 
-app.UseCors();
-
+app.UseCors("AllowFrontend");
+app.UseResponseCaching();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
