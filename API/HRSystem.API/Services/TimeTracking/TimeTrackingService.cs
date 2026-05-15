@@ -3,7 +3,9 @@ using HRSystem.API.Data;
 using HRSystem.API.DTOs.TimeTracking;
 using HRSystem.API.Models.TimeTracking;
 using HRSystem.API.Services.Common;
+using HRSystem.API.Services.Notifications;
 using HRSystem.API.Services.Overtime;
+using NotifType = HRSystem.API.Models.Notifications.NotificationType;
 
 namespace HRSystem.API.Services.TimeTracking;
 
@@ -12,12 +14,14 @@ public class TimeTrackingService : ITimeTrackingService
     private readonly AppDbContext _context;
     private readonly IOvertimeService _overtime;
     private readonly IApprovalScopeService _scope;
+    private readonly INotificationService _notification;
 
-    public TimeTrackingService(AppDbContext context, IOvertimeService overtime, IApprovalScopeService scope)
+    public TimeTrackingService(AppDbContext context, IOvertimeService overtime, IApprovalScopeService scope, INotificationService notification)
     {
         _context = context;
         _overtime = overtime;
         _scope = scope;
+        _notification = notification;
     }
 
     // ============== Clock-in / clock-out ==============
@@ -80,12 +84,48 @@ public class TimeTrackingService : ITimeTrackingService
         return Map(open);
     }
 
+    public async Task<TimeLogDto> CreateManualEntryAsync(int employeeId, CreateManualTimeLogDto dto)
+    {
+        if (dto.Hours <= 0 || dto.Hours > 16)
+            throw new InvalidOperationException("Hours must be between 0 and 16");
+        if (AsUtcDate(dto.Date) > AsUtcDate(DateTime.UtcNow))
+            throw new InvalidOperationException("Cannot log time for a future date");
+
+        var minutes = (int)Math.Round(dto.Hours * 60m);
+        var start = new TimeSpan(9, 0, 0); // 09:00 anchor for retroactive entries
+        var end = start.Add(TimeSpan.FromMinutes(minutes));
+
+        var log = new TimeLog
+        {
+            EmployeeId = employeeId,
+            Date = AsUtcDate(dto.Date),
+            StartTime = start,
+            EndTime = end,
+            DurationMinutes = minutes,
+            Notes = dto.Notes,
+        };
+        _context.TimeLogs.Add(log);
+        await _context.SaveChangesAsync();
+
+        // Day total may now exceed standard work hours — auto-detect overtime same as ClockOut.
+        var dayTotal = await _context.TimeLogs
+            .Where(l => l.EmployeeId == employeeId && l.Date == log.Date)
+            .SumAsync(l => l.DurationMinutes);
+        await _overtime.AutoDetectAsync(employeeId, log.Date, dayTotal, log.Id);
+
+        return Map(log);
+    }
+
     // ============== Lists ==============
 
     public async Task<List<TimeLogDto>> GetMineAsync(int employeeId, DateTime? date)
     {
         var q = _context.TimeLogs.Where(l => l.EmployeeId == employeeId);
-        if (date.HasValue) q = q.Where(l => l.Date == date.Value.Date);
+        if (date.HasValue)
+        {
+            var d = AsUtcDate(date.Value);
+            q = q.Where(l => l.Date == d);
+        }
         var rows = await q.OrderByDescending(l => l.Date).ThenBy(l => l.StartTime).ToListAsync();
         return rows.Select(Map).ToList();
     }
@@ -93,8 +133,9 @@ public class TimeTrackingService : ITimeTrackingService
     public async Task<List<TimeLogDto>> GetTeamAsync(int approverEmployeeId, DateTime date)
     {
         var scope = await _scope.GetScopeEmployeeIdsAsync(approverEmployeeId);
+        var d = AsUtcDate(date);
         var rows = await _context.TimeLogs
-            .Where(l => scope.Contains(l.EmployeeId) && l.Date == date.Date)
+            .Where(l => scope.Contains(l.EmployeeId) && l.Date == d)
             .OrderBy(l => l.StartTime)
             .ToListAsync();
         return rows.Select(Map).ToList();
@@ -104,8 +145,9 @@ public class TimeTrackingService : ITimeTrackingService
 
     public async Task<DailySummaryDto> GetDailySummaryAsync(int employeeId, DateTime date)
     {
+        var d = AsUtcDate(date);
         var sessions = await _context.TimeLogs
-            .Where(l => l.EmployeeId == employeeId && l.Date == date.Date)
+            .Where(l => l.EmployeeId == employeeId && l.Date == d)
             .OrderBy(l => l.StartTime)
             .ToListAsync();
         var totalMinutes = sessions.Sum(s => s.DurationMinutes);
@@ -153,6 +195,11 @@ public class TimeTrackingService : ITimeTrackingService
 
     // ============== Helpers ==============
 
+    // Incoming dates from [FromQuery] are Kind=Unspecified; Npgsql rejects those against
+    // 'timestamp with time zone' columns. Date-only comparisons need an explicit UTC kind.
+    private static DateTime AsUtcDate(DateTime input) =>
+        DateTime.SpecifyKind(input.Date, DateTimeKind.Utc);
+
     private static DateTime MondayOf(DateTime d)
     {
         var date = d.Date;
@@ -197,6 +244,16 @@ public class TimeTrackingService : ITimeTrackingService
         };
         _context.Set<TimeLogModificationRequest>().Add(req);
         await _context.SaveChangesAsync();
+
+        var requesterName = await _context.Employees
+            .Where(e => e.Id == employeeId)
+            .Select(e => e.FirstName + " " + e.LastName)
+            .FirstOrDefaultAsync() ?? "An employee";
+        await NotifyApproversAsync(employeeId, NotifType.OvertimeDetected,
+            "Time log modification requested",
+            $"{requesterName} requested a change to a time log dated {log.Date:yyyy-MM-dd}.",
+            req.Id);
+
         return MapMod(req, null);
     }
 
@@ -250,6 +307,12 @@ public class TimeTrackingService : ITimeTrackingService
         req.ApprovedById = approverEmployeeId;
         req.ProcessedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        await NotifyEmployeeAsync(req.EmployeeId, NotifType.OvertimeApproved,
+            "Time log modification approved",
+            "Your time log modification request has been approved.",
+            req.Id);
+
         return MapMod(req, null);
     }
 
@@ -269,7 +332,59 @@ public class TimeTrackingService : ITimeTrackingService
             ? $"[REJECTED] {reason}"
             : $"{req.Reason}\n[REJECTED] {reason}";
         await _context.SaveChangesAsync();
+
+        await NotifyEmployeeAsync(req.EmployeeId, NotifType.OvertimeApproved,
+            "Time log modification rejected",
+            $"Your time log modification request was rejected: {reason}",
+            req.Id);
+
         return MapMod(req, null);
+    }
+
+    // ============== Notification helpers ==============
+
+    private async Task NotifyEmployeeAsync(int employeeId, NotifType type, string title, string message, int? entityId)
+    {
+        try
+        {
+            var userId = await _context.Users
+                .Where(u => u.EmployeeId == employeeId)
+                .Select(u => (int?)u.Id)
+                .FirstOrDefaultAsync();
+            if (userId == null) return;
+            await _notification.CreateAsync(userId.Value, type, title, message,
+                relatedEntityType: nameof(TimeLogModificationRequest), relatedEntityId: entityId);
+        }
+        catch { /* best-effort */ }
+    }
+
+    private async Task NotifyApproversAsync(int ownerEmployeeId, NotifType type, string title, string message, int? entityId)
+    {
+        try
+        {
+            var approvers = await _context.Employees
+                .Where(e => e.Id == ownerEmployeeId)
+                .Select(e => new
+                {
+                    TeamLeadId = e.Team != null ? e.Team.TeamLeadId : null,
+                    DeptHeadId = e.Department != null ? e.Department.HeadId : null,
+                })
+                .FirstOrDefaultAsync();
+            if (approvers == null) return;
+            var approverEmployeeIds = new List<int>();
+            if (approvers.TeamLeadId.HasValue) approverEmployeeIds.Add(approvers.TeamLeadId.Value);
+            if (approvers.DeptHeadId.HasValue && approvers.DeptHeadId.Value != approvers.TeamLeadId)
+                approverEmployeeIds.Add(approvers.DeptHeadId.Value);
+            if (approverEmployeeIds.Count == 0) return;
+            var userIds = await _context.Users
+                .Where(u => u.EmployeeId.HasValue && approverEmployeeIds.Contains(u.EmployeeId.Value))
+                .Select(u => u.Id)
+                .ToListAsync();
+            foreach (var uid in userIds)
+                await _notification.CreateAsync(uid, type, title, message,
+                    relatedEntityType: nameof(TimeLogModificationRequest), relatedEntityId: entityId);
+        }
+        catch { /* best-effort */ }
     }
 
     // ============== Helpers (modification) ==============

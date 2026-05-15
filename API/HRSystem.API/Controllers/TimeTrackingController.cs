@@ -54,6 +54,20 @@ public class TimeTrackingController : ControllerBase
         return r == null ? NotFound(new { message = "No open session" }) : Ok(r);
     }
 
+    [HttpPost("manual")]
+    public async Task<ActionResult<TimeLogDto>> CreateManual([FromBody] CreateManualTimeLogDto dto)
+    {
+        var userId = _currentUser.UserId
+            ?? throw new InvalidOperationException("Not authenticated");
+        var employeeId = await _context.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.EmployeeId)
+            .FirstOrDefaultAsync()
+            ?? throw new InvalidOperationException("Current user has no employee link");
+        try { return Ok(await _service.CreateManualEntryAsync(employeeId, dto)); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
     [HttpGet("mine")]
     public async Task<ActionResult<List<TimeLogDto>>> GetMine([FromQuery] DateTime? date)
     {

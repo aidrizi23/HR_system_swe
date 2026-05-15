@@ -6,6 +6,7 @@ public interface ITimeTrackingService
 {
     Task<TimeLogDto> ClockInAsync(int employeeId);
     Task<TimeLogDto?> ClockOutAsync(int employeeId);
+    Task<TimeLogDto> CreateManualEntryAsync(int employeeId, CreateManualTimeLogDto dto);
     Task<List<TimeLogDto>> GetMineAsync(int employeeId, DateTime? date);
     Task<List<TimeLogDto>> GetTeamAsync(int approverEmployeeId, DateTime date);
     Task<DailySummaryDto> GetDailySummaryAsync(int employeeId, DateTime date);

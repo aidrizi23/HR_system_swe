@@ -67,7 +67,8 @@ public class OvertimeController : ControllerBase
             .Select(u => u.EmployeeId)
             .FirstOrDefaultAsync()
             ?? throw new InvalidOperationException("Current user has no employee link");
-        return Ok(await _service.GetPendingInScopeAsync(employeeId));
+        var isHrActor = User.IsInRole(nameof(RoleType.HRManager)) || User.IsInRole(nameof(RoleType.SuperAdmin));
+        return Ok(await _service.GetPendingInScopeAsync(employeeId, isHrActor));
     }
 
     [HttpGet]
@@ -86,9 +87,10 @@ public class OvertimeController : ControllerBase
             .Select(u => u.EmployeeId)
             .FirstOrDefaultAsync()
             ?? throw new InvalidOperationException("Current user has no employee link");
+        var isHrActor = User.IsInRole(nameof(RoleType.HRManager)) || User.IsInRole(nameof(RoleType.SuperAdmin));
         try
         {
-            var r = await _service.RecommendAsync(id, employeeId, dto.Comments);
+            var r = await _service.RecommendAsync(id, employeeId, dto.Comments, isHrActor);
             return r == null ? NotFound() : Ok(r);
         }
         catch (UnauthorizedAccessException) { return Forbid(); }

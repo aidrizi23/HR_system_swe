@@ -3,6 +3,8 @@ using HRSystem.API.Data;
 using HRSystem.API.DTOs.Overtime;
 using HRSystem.API.Models.Overtime;
 using HRSystem.API.Services.Common;
+using HRSystem.API.Services.Notifications;
+using NotifType = HRSystem.API.Models.Notifications.NotificationType;
 
 namespace HRSystem.API.Services.Overtime;
 
@@ -10,11 +12,13 @@ public class OvertimeService : IOvertimeService
 {
     private readonly AppDbContext _context;
     private readonly IApprovalScopeService _scope;
+    private readonly INotificationService _notification;
 
-    public OvertimeService(AppDbContext context, IApprovalScopeService scope)
+    public OvertimeService(AppDbContext context, IApprovalScopeService scope, INotificationService notification)
     {
         _context = context;
         _scope = scope;
+        _notification = notification;
     }
 
     public async Task<OvertimeRecordDto> SubmitManualAsync(int employeeId, CreateOvertimeRequestDto dto)
@@ -22,7 +26,7 @@ public class OvertimeService : IOvertimeService
         var rec = new OvertimeRecord
         {
             EmployeeId = employeeId,
-            Date = dto.Date.Date,
+            Date = AsUtcDate(dto.Date),
             OvertimeMinutes = dto.OvertimeMinutes,
             Type = OvertimeType.ManualRequest,
             Reason = dto.Reason,
@@ -40,6 +44,7 @@ public class OvertimeService : IOvertimeService
         if (totalMinutesToday <= standardMinutes) return;
 
         var overtimeMinutes = totalMinutesToday - standardMinutes;
+        var d = AsUtcDate(date);
 
         // Idempotency: if an AutoDetected record already exists for this date in a non-terminal
         // state, update it; otherwise create a new one. The partial unique index
@@ -49,7 +54,7 @@ public class OvertimeService : IOvertimeService
         {
             var existing = await _context.Set<OvertimeRecord>()
                 .FirstOrDefaultAsync(r => r.EmployeeId == employeeId
-                                       && r.Date == date.Date
+                                       && r.Date == d
                                        && r.Type == OvertimeType.AutoDetected
                                        && (r.Status == OvertimeStatus.Pending
                                         || r.Status == OvertimeStatus.Recommended));
@@ -63,7 +68,7 @@ public class OvertimeService : IOvertimeService
                 _context.Set<OvertimeRecord>().Add(new OvertimeRecord
                 {
                     EmployeeId = employeeId,
-                    Date = date.Date,
+                    Date = d,
                     OvertimeMinutes = overtimeMinutes,
                     Type = OvertimeType.AutoDetected,
                     Status = OvertimeStatus.Pending,
@@ -92,16 +97,17 @@ public class OvertimeService : IOvertimeService
         return await MapListAsync(rows);
     }
 
-    public async Task<List<OvertimeRecordDto>> GetPendingInScopeAsync(int approverEmployeeId)
+    public async Task<List<OvertimeRecordDto>> GetPendingInScopeAsync(int approverEmployeeId, bool isHrActor)
     {
-        var scope = await _scope.GetScopeEmployeeIdsAsync(approverEmployeeId);
-
-        var rows = await _context.Set<OvertimeRecord>()
-            .Where(r => scope.Contains(r.EmployeeId)
-                     && (r.Status == OvertimeStatus.Pending
-                      || r.Status == OvertimeStatus.Recommended))
-            .OrderBy(r => r.Date)
-            .ToListAsync();
+        // HR/SuperAdmin act with global scope. TeamLeads/DepartmentManagers see only their scope.
+        var q = _context.Set<OvertimeRecord>()
+            .Where(r => r.Status == OvertimeStatus.Pending || r.Status == OvertimeStatus.Recommended);
+        if (!isHrActor)
+        {
+            var scope = await _scope.GetScopeEmployeeIdsAsync(approverEmployeeId);
+            q = q.Where(r => scope.Contains(r.EmployeeId));
+        }
+        var rows = await q.OrderBy(r => r.Date).ToListAsync();
         return await MapListAsync(rows);
     }
 
@@ -111,20 +117,23 @@ public class OvertimeService : IOvertimeService
         if (filter.EmployeeId.HasValue) q = q.Where(r => r.EmployeeId == filter.EmployeeId.Value);
         if (!string.IsNullOrEmpty(filter.Status) && Enum.TryParse<OvertimeStatus>(filter.Status, out var s))
             q = q.Where(r => r.Status == s);
-        if (filter.FromDate.HasValue) q = q.Where(r => r.Date >= filter.FromDate.Value.Date);
-        if (filter.ToDate.HasValue) q = q.Where(r => r.Date <= filter.ToDate.Value.Date);
+        if (filter.FromDate.HasValue) { var f = AsUtcDate(filter.FromDate.Value); q = q.Where(r => r.Date >= f); }
+        if (filter.ToDate.HasValue)   { var t = AsUtcDate(filter.ToDate.Value);   q = q.Where(r => r.Date <= t); }
         var rows = await q.OrderByDescending(r => r.Date).ToListAsync();
         return await MapListAsync(rows);
     }
 
-    public async Task<OvertimeRecordDto?> RecommendAsync(int recordId, int recommenderEmployeeId, string? comments)
+    public async Task<OvertimeRecordDto?> RecommendAsync(int recordId, int recommenderEmployeeId, string? comments, bool isHrActor)
     {
         var r = await _context.Set<OvertimeRecord>().FirstOrDefaultAsync(x => x.Id == recordId);
         if (r == null) return null;
         if (r.Status != OvertimeStatus.Pending)
             throw new InvalidOperationException($"Cannot recommend {r.Status} record");
 
-        await _scope.EnsureInScopeAsync(recommenderEmployeeId, r.EmployeeId);
+        // HR/SuperAdmin can recommend any record. This also unblocks HR's own overtime
+        // submissions — without an HR-bypass nobody would be in scope to recommend them.
+        if (!isHrActor)
+            await _scope.EnsureInScopeAsync(recommenderEmployeeId, r.EmployeeId);
 
         r.Status = OvertimeStatus.Recommended;
         r.RecommendedById = recommenderEmployeeId;
@@ -146,6 +155,10 @@ public class OvertimeService : IOvertimeService
         r.ApproverComments = comments;
         r.ProcessedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        await NotifyOwnerAsync(r, NotifType.OvertimeApproved, "Overtime approved",
+            $"Your overtime request for {r.Date:yyyy-MM-dd} has been approved.");
+
         return await MapAsync(r);
     }
 
@@ -165,7 +178,31 @@ public class OvertimeService : IOvertimeService
         r.ApproverComments = reason;
         r.ProcessedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        // No dedicated "rejected" notification type — reuse OvertimeApproved with a rejection message.
+        await NotifyOwnerAsync(r, NotifType.OvertimeApproved, "Overtime rejected",
+            $"Your overtime request for {r.Date:yyyy-MM-dd} was rejected: {reason}");
+
         return await MapAsync(r);
+    }
+
+    private async Task NotifyOwnerAsync(OvertimeRecord r, NotifType type, string title, string message)
+    {
+        try
+        {
+            // NotificationService.CreateAsync takes a USER id, not an Employee id. Resolve via Users.
+            var userId = await _context.Users
+                .Where(u => u.EmployeeId == r.EmployeeId)
+                .Select(u => (int?)u.Id)
+                .FirstOrDefaultAsync();
+            if (userId == null) return;
+            await _notification.CreateAsync(userId.Value, type, title, message,
+                relatedEntityType: nameof(OvertimeRecord), relatedEntityId: r.Id);
+        }
+        catch
+        {
+            // Notification is best-effort; don't fail the workflow if it errors.
+        }
     }
 
     private async Task<OvertimeRecordDto> MapAsync(OvertimeRecord r)
@@ -226,4 +263,9 @@ public class OvertimeService : IOvertimeService
             CreatedAt = r.CreatedAt,
         }).ToList();
     }
+
+    // Incoming dates from JSON/query bind as Kind=Unspecified; Npgsql rejects those
+    // against 'timestamp with time zone' columns. Stamp Kind=Utc on entry.
+    private static DateTime AsUtcDate(DateTime input) =>
+        DateTime.SpecifyKind(input.Date, DateTimeKind.Utc);
 }
