@@ -8,6 +8,7 @@ import { TaskBoard } from "@/components/tasks/task-board";
 import { TaskDrawer } from "@/components/tasks/task-drawer";
 import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
 import { apiTasks } from "@/lib/api/tasks";
+import { Select } from "@/components/ui/select";
 import type { WorkTaskDto, WorkTaskStatus } from "@/types";
 
 type Scope = "mine" | "byMe" | "all";
@@ -79,17 +80,18 @@ export default function TasksPage() {
           placeholder="Search tasks…"
           className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm"
         />
-        <select
+        <Select
           value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value as PriorityFilter)}
-          className="rounded-lg border border-border bg-card px-3 py-2 text-sm"
-        >
-          <option value="">All Priorities</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-          <option value="Urgent">Urgent</option>
-        </select>
+          onChange={(v) => setPriorityFilter(v as PriorityFilter)}
+          className="w-44"
+          options={[
+            { value: "",        label: "All Priorities" },
+            { value: "Low",     label: "Low" },
+            { value: "Medium",  label: "Medium" },
+            { value: "High",    label: "High" },
+            { value: "Urgent",  label: "Urgent" },
+          ]}
+        />
       </div>
       <TaskBoard
         tasks={visible}

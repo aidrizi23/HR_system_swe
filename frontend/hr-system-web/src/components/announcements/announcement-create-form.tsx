@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { apiAnnouncements } from "@/lib/api/announcements";
 
 interface Props { onCreated: () => void; }
@@ -56,9 +57,11 @@ export function AnnouncementCreateForm({ onCreated }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Priority</Label>
-            <select value={priority} onChange={(e) => setPriority(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background p-2 text-sm">
-              {PRIORITY_LABEL.map((p, i) => <option key={p} value={i}>{p}</option>)}
-            </select>
+            <Select
+              value={String(priority)}
+              onChange={(v) => setPriority(Number(v))}
+              options={PRIORITY_LABEL.map((p, i) => ({ value: String(i), label: p }))}
+            />
           </div>
           <div className="flex items-center pt-6">
             <label className="flex items-center gap-2 text-sm">

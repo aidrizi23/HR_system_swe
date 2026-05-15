@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { apiOnboarding } from "@/lib/api/onboarding";
 import { apiUsers, type DirectoryUser } from "@/lib/api/users";
 import type { OnboardingTemplateDto } from "@/types";
@@ -44,17 +45,21 @@ export function AssignOnboardingDialog({ open, onClose, onAssigned }: Props) {
         <div className="mt-4 space-y-3">
           <div>
             <Label>Employee</Label>
-            <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value ? Number(e.target.value) : "")} className="w-full rounded-lg border border-border bg-background p-2 text-sm">
-              <option value="">— Select —</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <Select
+              value={employeeId === "" ? "" : String(employeeId)}
+              onChange={(v) => setEmployeeId(v ? Number(v) : "")}
+              placeholder="— Select —"
+              options={users.map((u) => ({ value: String(u.id), label: u.name }))}
+            />
           </div>
           <div>
             <Label>Template</Label>
-            <select value={templateId} onChange={(e) => setTemplateId(e.target.value ? Number(e.target.value) : "")} className="w-full rounded-lg border border-border bg-background p-2 text-sm">
-              <option value="">— Select —</option>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            <Select
+              value={templateId === "" ? "" : String(templateId)}
+              onChange={(v) => setTemplateId(v ? Number(v) : "")}
+              placeholder="— Select —"
+              options={templates.map((t) => ({ value: String(t.id), label: t.name }))}
+            />
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>

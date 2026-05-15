@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import type { OnboardingTemplateItemDto, OnboardingResponsibleRole } from "@/types";
 
 const ROLES: OnboardingResponsibleRole[] = ["Employee", "HR", "Manager", "IT"];
@@ -38,13 +39,11 @@ export function TemplateItemEdit({ initial, onSave, onCancel }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label>Owner</Label>
-          <select
+          <Select
             value={responsibleRole}
-            onChange={(e) => setRole(e.target.value as OnboardingResponsibleRole)}
-            className="w-full rounded-lg border border-border bg-background p-2 text-sm"
-          >
-            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+            onChange={(v) => setRole(v as OnboardingResponsibleRole)}
+            options={ROLES.map((r) => ({ value: r, label: r }))}
+          />
         </div>
         <div>
           <Label>Due day offset</Label>

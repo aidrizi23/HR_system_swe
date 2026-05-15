@@ -8,6 +8,7 @@ import { UploadModal } from "@/components/documents/upload-modal";
 import { UploadDragOverlay } from "@/components/documents/upload-drag-overlay";
 import { ExpiringDocs } from "@/components/documents/expiring-docs";
 import { DocumentCategories } from "@/components/documents/document-categories";
+import { Select } from "@/components/ui/select";
 import { apiDocuments } from "@/lib/api/documents";
 import { getCurrentMockUser, isHrOrAbove, mockUsers } from "@/lib/mock/users";
 import type { EmployeeDocumentDto } from "@/types";
@@ -99,13 +100,13 @@ export default function DocumentsPage() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-border bg-card p-4">
             <label className="text-xs font-semibold text-muted-foreground">Employee</label>
-            <select
-              value={selectedEmployeeId}
-              onChange={(e) => setSelectedEmployeeId(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
-            >
-              {mockUsers.map((u) => <option key={u.id} value={u.employeeId}>{u.name}</option>)}
-            </select>
+            <div className="mt-1">
+              <Select
+                value={String(selectedEmployeeId)}
+                onChange={(v) => setSelectedEmployeeId(Number(v))}
+                options={mockUsers.map((u) => ({ value: String(u.employeeId), label: u.name }))}
+              />
+            </div>
           </div>
           <DocumentList documents={employeeDocs} canDelete={isHr} onDelete={handleDelete} />
         </div>

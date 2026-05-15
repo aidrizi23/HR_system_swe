@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { apiDocuments, apiDocumentCategories } from "@/lib/api/documents";
 import { getCurrentMockUser } from "@/lib/mock/users";
 import type { DocumentCategoryDto, EmployeeDocumentDto } from "@/types";
@@ -92,14 +93,12 @@ export function UploadModal({ open, initialFile, onClose, onUploaded }: Props) {
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
             <Label>Category</Label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full rounded-lg border border-border bg-background p-2 text-sm"
-            >
-              <option value="">— Select —</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select
+              value={categoryId === "" ? "" : String(categoryId)}
+              onChange={(v) => setCategoryId(v ? Number(v) : "")}
+              placeholder="— Select —"
+              options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
+            />
           </div>
           <div>
             <Label>Expiry (optional)</Label>
