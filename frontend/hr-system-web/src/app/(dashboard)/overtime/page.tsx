@@ -1,22 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { OvertimeForm } from "@/components/overtime/overtime-form";
 import { OvertimeList } from "@/components/overtime/overtime-list";
 import { OvertimeAnalytics } from "@/components/overtime/overtime-analytics";
 import { apiOvertime } from "@/lib/api/overtime";
-import { getCurrentMockUser, isHrOrAbove } from "@/lib/mock/users";
+import { type AuthUser, getStoredUser } from "@/lib/auth";
 import type { OvertimeRecordDto } from "@/types";
 
-type Tab = "approvals" | "team" | "analytics";
+type Tab = "mine" | "approvals" | "team" | "analytics";
 
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: "approvals", label: "Approvals" },
-  { key: "team",      label: "Team Overview" },
+const ALL_TABS: Array<{ key: Tab; label: string; approverOnly?: boolean }> = [
+  { key: "mine",      label: "My Overtime" },
+  { key: "approvals", label: "Approvals",      approverOnly: true },
+  { key: "team",      label: "Team Overview",  approverOnly: true },
   { key: "analytics", label: "Analytics" },
 ];
+
+function isApproverRole(role: string | undefined): boolean {
+  return role === "TeamLead" || role === "DepartmentManager" || role === "HRManager" || role === "SuperAdmin";
+}
+function isHrRole(role: string | undefined): boolean {
+  return role === "HRManager" || role === "SuperAdmin";
+}
 
 function extractError(e: unknown, fallback: string): string {
   if (typeof e === "object" && e !== null && "response" in e) {
@@ -27,20 +35,36 @@ function extractError(e: unknown, fallback: string): string {
 }
 
 export default function OvertimePage() {
-  const me = getCurrentMockUser();
-  const isHr = isHrOrAbove(me.role);
-  const [active, setActive] = useState<Tab>("approvals");
+  const [user, setUser] = useState<AuthUser | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUser(getStoredUser());
+  }, []);
+
+  const isApprover = isApproverRole(user?.role);
+  const isHr = isHrRole(user?.role);
+  const tabs = ALL_TABS.filter((t) => !t.approverOnly || isApprover);
+
+  const [active, setActive] = useState<Tab>("mine");
+  const [mine, setMine]       = useState<OvertimeRecordDto[]>([]);
   const [pending, setPending] = useState<OvertimeRecordDto[]>([]);
-  const [all, setAll] = useState<OvertimeRecordDto[]>([]);
+  const [all, setAll]         = useState<OvertimeRecordDto[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(() => {
-    apiOvertime.listPending().then(setPending).catch(() => setPending([]));
-    apiOvertime.listAll().then(setAll).catch(() => setAll([]));
-  }, []);
+  // React Compiler memoizes this automatically; no useCallback needed.
+  function refresh() {
+    apiOvertime.listMine().then(setMine).catch(() => setMine([]));
+    if (isApprover) {
+      apiOvertime.listPending().then(setPending).catch(() => setPending([]));
+      apiOvertime.listAll().then(setAll).catch(() => setAll([]));
+    }
+  }
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refresh();
+  }, [isApprover]);
 
   async function recommend(id: number) {
     try { await apiOvertime.recommend(id); refresh(); }
@@ -73,7 +97,7 @@ export default function OvertimePage() {
       )}
 
       <div className="flex gap-6 border-b border-border">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setActive(t.key)}
@@ -88,7 +112,13 @@ export default function OvertimePage() {
         ))}
       </div>
 
-      {active === "approvals" && (
+      {active === "mine" && (
+        <OvertimeList
+          records={mine}
+          emptyMessage="You haven't submitted any overtime yet. Click 'Submit overtime' to log one."
+        />
+      )}
+      {active === "approvals" && isApprover && (
         <OvertimeList
           records={pending}
           showApprovalActions
@@ -98,7 +128,7 @@ export default function OvertimePage() {
           emptyMessage="No pending overtime requests"
         />
       )}
-      {active === "team"      && <OvertimeList records={all} emptyMessage="No overtime records" />}
+      {active === "team"      && isApprover && <OvertimeList records={all} emptyMessage="No overtime records" />}
       {active === "analytics" && <OvertimeAnalytics />}
 
       <OvertimeForm open={formOpen} onClose={() => setFormOpen(false)} onSubmitted={refresh} />
