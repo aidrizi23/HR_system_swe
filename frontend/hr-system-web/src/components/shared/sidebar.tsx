@@ -1,13 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Briefcase } from "lucide-react";
+import { type AuthUser, getStoredUser, humanizeRole } from "@/lib/auth";
 import { NAV_GROUPS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUser(getStoredUser());
+  }, []);
+  const displayName = user?.name?.trim() || user?.email || "Sign in";
+  const displayRole = humanizeRole(user?.role) || "—";
 
   return (
     <aside className="hidden w-[270px] shrink-0 flex-col gap-1.5 self-start rounded-[20px] border border-border bg-sidebar p-3.5 pb-[18px] shadow-[0_1px_2px_rgba(15,23,42,0.03)] lg:sticky lg:top-[18px] lg:m-[18px] lg:mr-0 lg:flex lg:max-h-[calc(100vh-36px)] lg:overflow-y-auto">
@@ -17,9 +26,9 @@ export function Sidebar() {
         </div>
         <div className="flex min-w-0 flex-col leading-[1.2]">
           <strong className="max-w-[160px] truncate text-[13.5px] font-bold text-foreground">
-            Human Resources S…
+            {displayName}
           </strong>
-          <span className="text-[12px] text-muted-foreground">Super Admin</span>
+          <span className="text-[12px] text-muted-foreground">{displayRole}</span>
         </div>
       </div>
 
@@ -65,10 +74,10 @@ export function Sidebar() {
           </div>
           <div className="flex min-w-0 flex-col leading-[1.2]">
             <strong className="text-[13px] font-bold text-foreground">
-              Super Admin
+              {user?.jobTitle || displayRole}
             </strong>
             <span className="max-w-[160px] truncate text-[11.5px] text-muted-foreground">
-              admin@hrsystem.com
+              {user?.email || "—"}
             </span>
           </div>
         </div>

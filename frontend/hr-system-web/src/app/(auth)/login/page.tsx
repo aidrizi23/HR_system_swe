@@ -16,7 +16,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { login } from "@/lib/api/auth";
+import { getEmployeeById, login } from "@/lib/api/auth";
 import { getStoredAuth, isExpired, setStoredAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,9 @@ const loginSchema = z.object({
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
+
+// Same password for every demo account — set during DB seed.
+const DEMO_PASSWORD = "Test123!";
 
 const DEMO_ACCOUNTS = [
   {
@@ -116,7 +119,22 @@ export default function LoginPage() {
     setSubmitError(null);
     try {
       const result = await login(values);
-      setStoredAuth({ token: result.token, expiresAt: result.expiresAt });
+      // Enrich the stored user with their employee profile (name + job title) so the
+      // topbar/sidebar can render real info instead of hard-coded "Super Admin".
+      let name: string | undefined;
+      let jobTitle: string | undefined;
+      if (result.user.employeeId != null) {
+        const emp = await getEmployeeById(result.user.employeeId);
+        if (emp) {
+          name = `${emp.firstName} ${emp.lastName}`.trim();
+          jobTitle = emp.jobTitle;
+        }
+      }
+      setStoredAuth({
+        token: result.token,
+        expiresAt: result.expiresAt,
+        user: { ...result.user, name, jobTitle },
+      });
       router.replace("/dashboard");
     } catch (err: unknown) {
       const status =
@@ -133,6 +151,7 @@ export default function LoginPage() {
 
   const handleDemoFill = (email: string) => {
     setValue("email", email, { shouldValidate: true });
+    setValue("password", DEMO_PASSWORD, { shouldValidate: true });
   };
 
   return (
