@@ -35,6 +35,7 @@ builder.Services.AddScoped<HRSystem.API.Services.Notifications.IEmailSender, HRS
 builder.Services.AddScoped<HRSystem.API.Services.Notifications.INotificationService, HRSystem.API.Services.Notifications.NotificationService>();
 builder.Services.AddScoped<HRSystem.API.Services.Documents.IFileStorage, HRSystem.API.Services.Documents.LocalFileStorage>();
 builder.Services.AddScoped<HRSystem.API.Services.Documents.IDocumentService, HRSystem.API.Services.Documents.DocumentService>();
+builder.Services.AddScoped<HRSystem.API.Services.Onboarding.IOnboardingService, HRSystem.API.Services.Onboarding.OnboardingService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
