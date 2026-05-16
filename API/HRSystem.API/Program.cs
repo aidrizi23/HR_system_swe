@@ -33,6 +33,8 @@ builder.Services.AddScoped<HRSystem.API.Services.Overtime.IOvertimeService, HRSy
 builder.Services.AddScoped<HRSystem.API.Services.Holidays.IHolidayService, HRSystem.API.Services.Holidays.HolidayService>();
 builder.Services.AddScoped<HRSystem.API.Services.Notifications.IEmailSender, HRSystem.API.Services.Notifications.LoggerEmailSender>();
 builder.Services.AddScoped<HRSystem.API.Services.Notifications.INotificationService, HRSystem.API.Services.Notifications.NotificationService>();
+builder.Services.AddScoped<HRSystem.API.Services.Documents.IFileStorage, HRSystem.API.Services.Documents.LocalFileStorage>();
+builder.Services.AddScoped<HRSystem.API.Services.Documents.IDocumentService, HRSystem.API.Services.Documents.DocumentService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
