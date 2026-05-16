@@ -58,10 +58,17 @@ export function TemplateEditor() {
     if (!e.over || e.active.id === e.over.id) return;
     const oldIndex = template.items.findIndex((i) => i.id === e.active.id);
     const newIndex = template.items.findIndex((i) => i.id === e.over!.id);
+    const prevItems = template.items;
     const reordered = arrayMove(template.items, oldIndex, newIndex);
     // Optimistic local update so an in-flight "+ Add item" form isn't unmounted by a full refresh
     setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, items: reordered } : t)));
-    await apiOnboarding.reorderItems(template.id, reordered.map((i) => i.id));
+    try {
+      await apiOnboarding.reorderItems(template.id, reordered.map((i) => i.id));
+    } catch (err) {
+      // Roll back to the pre-drag order if the server rejected the new order.
+      setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, items: prevItems } : t)));
+      setError(err instanceof Error ? err.message : "Reorder failed");
+    }
   }
 
   return (
