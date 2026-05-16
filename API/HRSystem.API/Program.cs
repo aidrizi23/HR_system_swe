@@ -10,6 +10,10 @@ using HRSystem.API.Services.Common;
 using HRSystem.API.Services.Department;
 using HRSystem.API.Services.Employee;
 
+// QuestPDF Community license — required for free use. Project qualifies as
+// non-commercial student work (annual revenue under $1M USD).
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<AuditInterceptor>();
@@ -36,6 +40,13 @@ builder.Services.AddScoped<HRSystem.API.Services.Notifications.INotificationServ
 builder.Services.AddScoped<HRSystem.API.Services.Documents.IFileStorage, HRSystem.API.Services.Documents.LocalFileStorage>();
 builder.Services.AddScoped<HRSystem.API.Services.Documents.IDocumentService, HRSystem.API.Services.Documents.DocumentService>();
 builder.Services.AddScoped<HRSystem.API.Services.Onboarding.IOnboardingService, HRSystem.API.Services.Onboarding.OnboardingService>();
+builder.Services.AddScoped<HRSystem.API.Services.Pdf.IPdfTemplateRenderer, HRSystem.API.Services.Pdf.PdfTemplateRenderer>();
+builder.Services.AddScoped<HRSystem.API.Services.Tasks.ITaskService, HRSystem.API.Services.Tasks.TaskService>();
+builder.Services.AddScoped<HRSystem.API.Services.Performance.IPerformanceService, HRSystem.API.Services.Performance.PerformanceService>();
+builder.Services.AddScoped<HRSystem.API.Services.Salary.ISalaryService, HRSystem.API.Services.Salary.SalaryService>();
+builder.Services.AddScoped<HRSystem.API.Services.Salary.ISalaryProjectionService, HRSystem.API.Services.Salary.SalaryProjectionService>();
+builder.Services.AddScoped<HRSystem.API.Services.Payroll.IPayrollService, HRSystem.API.Services.Payroll.PayrollService>();
+builder.Services.AddScoped<HRSystem.API.Services.SelfService.ISelfServiceDocumentService, HRSystem.API.Services.SelfService.SelfServiceDocumentService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
