@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { TaskComments } from "./task-comments";
 import { apiTasks } from "@/lib/api/tasks";
 import type { WorkTaskDto, WorkTaskStatus, TaskPriority } from "@/types";
@@ -83,19 +84,20 @@ export function TaskDrawer({ taskId, onClose, onStatusChange, onEdit }: Props) {
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${PRIORITY_CHIP[task.priority]}`}>
                 {task.priority.toUpperCase()}
               </span>
-              <select
+              <Select
                 value={task.status}
-                onChange={(e) => {
-                  const s = e.target.value as WorkTaskStatus;
+                onChange={(v) => {
+                  const s = v as WorkTaskStatus;
                   setTask({ ...task, status: s });
                   onStatusChange(task.id, s);
                 }}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_CHIP[task.status]}`}
-              >
-                {(Object.keys(STATUS_LABELS) as WorkTaskStatus[]).map((s) => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                ))}
-              </select>
+                size="sm"
+                className="w-36"
+                options={(Object.keys(STATUS_LABELS) as WorkTaskStatus[]).map((s) => ({
+                  value: s,
+                  label: STATUS_LABELS[s],
+                }))}
+              />
               {onEdit && (
                 <Button variant="outline" size="sm" className="ml-auto" onClick={() => onEdit(task)}>
                   Edit

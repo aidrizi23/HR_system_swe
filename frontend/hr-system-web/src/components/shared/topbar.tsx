@@ -14,14 +14,7 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useTheme } from "next-themes";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type AuthUser, clearStoredAuth, getStoredUser, humanizeRole, initialsFromName } from "@/lib/auth";
 import { findNavByPath } from "@/lib/nav";
 
@@ -37,12 +30,29 @@ export function Topbar() {
   const nav = findNavByPath(pathname);
   const { resolvedTheme, setTheme } = useTheme();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // localStorage is unavailable during SSR; read it after mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser(getStoredUser());
   }, []);
+
+  // Close the menu on outside-click and on Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   const today = dateFormatter.format(new Date());
 
@@ -55,6 +65,7 @@ export function Topbar() {
   const initials = initialsFromName(user?.name, user?.email);
 
   const handleSignOut = () => {
+    setMenuOpen(false);
     clearStoredAuth();
     router.replace("/login");
   };
@@ -118,48 +129,64 @@ export function Topbar() {
 
         <NotificationBell />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex h-[46px] items-center gap-2.5 rounded-full border border-border bg-card py-1 pl-1.5 pr-3.5 transition-colors hover:bg-secondary"
-            >
-              <span className="grid h-[34px] w-[34px] place-items-center rounded-full bg-[#0b1220] text-[13.5px] font-bold text-white">
-                {initials || "?"}
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="inline-flex h-[46px] items-center gap-2.5 rounded-full border border-border bg-card py-1 pl-1.5 pr-3.5 transition-colors hover:bg-secondary"
+          >
+            <span className="grid h-[34px] w-[34px] place-items-center rounded-full bg-[#0b1220] text-[13.5px] font-bold text-white">
+              {initials || "?"}
+            </span>
+            <span className="hidden flex-col leading-[1.15] md:flex">
+              <strong className="text-[12.5px] font-bold text-foreground">
+                {displayName}
+              </strong>
+              <span className="text-[11.5px] text-muted-foreground">
+                {displayRole || "—"}
               </span>
-              <span className="hidden flex-col leading-[1.15] md:flex">
-                <strong className="text-[12.5px] font-bold text-foreground">
-                  {displayName}
-                </strong>
-                <span className="text-[11.5px] text-muted-foreground">
-                  {displayRole || "—"}
-                </span>
-              </span>
-              <ChevronDown
-                className="ml-0.5 h-[14px] w-[14px] text-muted-foreground"
-                strokeWidth={2}
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem>
-              <UserRound className="mr-2 h-4 w-4" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={handleSignOut}
-              className="text-destructive focus:text-destructive"
+            </span>
+            <ChevronDown
+              className={`ml-0.5 h-[14px] w-[14px] text-muted-foreground transition-transform ${menuOpen ? "rotate-180" : ""}`}
+              strokeWidth={2}
+            />
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-secondary"
+              >
+                <UserRound className="h-4 w-4" />
+                Profile
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-secondary"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </button>
+              <div className="h-px bg-border" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

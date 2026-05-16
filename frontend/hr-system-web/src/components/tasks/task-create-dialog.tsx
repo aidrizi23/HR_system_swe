@@ -1,11 +1,12 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { apiTasks } from "@/lib/api/tasks";
 import { mockUsers } from "@/lib/mock/users";
 import type { TaskPriority, WorkTaskDto } from "@/types";
@@ -36,6 +37,7 @@ export function TaskCreateDialog({ open, onClose, onCreated }: Props) {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<InputValues, unknown, FormValues>({
     resolver: zodResolver(schema),
@@ -81,25 +83,33 @@ export function TaskCreateDialog({ open, onClose, onCreated }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Assignee</Label>
-              <select
-                {...register("assignedToId")}
-                className="w-full rounded-lg border border-border bg-background p-2 text-sm"
-              >
-                <option value="">— Select —</option>
-                {mockUsers.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+              <Controller
+                control={control}
+                name="assignedToId"
+                render={({ field }) => (
+                  <Select
+                    value={field.value != null && field.value !== "" ? String(field.value) : ""}
+                    onChange={(v) => field.onChange(v === "" ? "" : Number(v))}
+                    placeholder="— Select —"
+                    options={mockUsers.map((u) => ({ value: String(u.id), label: u.name }))}
+                  />
+                )}
+              />
               {errors.assignedToId && <p className="mt-1 text-xs text-red-600">{errors.assignedToId.message}</p>}
             </div>
             <div>
               <Label>Priority</Label>
-              <select
-                {...register("priority")}
-                className="w-full rounded-lg border border-border bg-background p-2 text-sm"
-              >
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
+              <Controller
+                control={control}
+                name="priority"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? "Medium"}
+                    onChange={(v) => field.onChange(v as TaskPriority)}
+                    options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+                  />
+                )}
+              />
             </div>
             <div>
               <Label>Due date</Label>
