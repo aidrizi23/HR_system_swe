@@ -8,7 +8,7 @@ import { ActiveChecklists } from "@/components/onboarding/active-checklists";
 import { TemplateEditor } from "@/components/onboarding/template-editor";
 import { AssignOnboardingDialog } from "@/components/onboarding/assign-onboarding-dialog";
 import { apiOnboarding } from "@/lib/api/onboarding";
-import { getCurrentMockUser, isHrOrAbove } from "@/lib/mock/users";
+import { getStoredUser } from "@/lib/auth";
 import type { OnboardingChecklistDto } from "@/types";
 
 type Tab = "active" | "templates" | "analytics";
@@ -20,17 +20,20 @@ const TABS: Array<{ key: Tab; label: string; hrOnly: boolean }> = [
 ];
 
 export default function OnboardingPage() {
-  const me = getCurrentMockUser();
-  const isHr = isHrOrAbove(me.role);
+  const me = getStoredUser();
+  const isHr = me?.role === "HRManager" || me?.role === "SuperAdmin";
   const visibleTabs = TABS.filter((t) => !t.hrOnly || isHr);
   const [active, setActive] = useState<Tab>("active");
   const [assignOpen, setAssignOpen] = useState(false);
   const [checklists, setChecklists] = useState<OnboardingChecklistDto[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => { apiOnboarding.listChecklists().then(setChecklists); }, [refreshKey]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    apiOnboarding.listChecklists().then(setChecklists);
+  }, [refreshKey]);
 
-  const activeCount = checklists.filter((c) => c.status === "Active").length;
+  const activeCount = checklists.filter((c) => c.status === "InProgress").length;
   const completedCount = checklists.filter((c) => c.status === "Completed").length;
   const avgProgress = checklists.length === 0
     ? 0

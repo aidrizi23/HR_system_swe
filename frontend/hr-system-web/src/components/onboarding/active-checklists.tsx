@@ -13,7 +13,8 @@ export function ActiveChecklists({ refreshKey }: Props) {
   const [bump, setBump] = useState(0);
 
   useEffect(() => {
-    apiOnboarding.listChecklists().then((cs) => setChecklists(cs.filter((c) => c.status === "Active")));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    apiOnboarding.listChecklists().then((cs) => setChecklists(cs.filter((c) => c.status === "InProgress")));
   }, [refreshKey, bump]);
 
   if (checklists.length === 0) {
